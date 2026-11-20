@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku Lab</title>
+<style>
+:root{--green:#115740;--gold:#B9975B;--ink:#17231e;--muted:#66756e;--line:#cbd5cf;--soft:#edf3ef;--peer:#f0f5f1;--selected:#dcebe2;--red:#c62828;--redbg:#fde8e7;--orange:#d97706;--orangebg:#fff1dc;--hint:#1769aa}
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7f5;color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+main{width:min(100% - 28px,900px);margin:28px auto 42px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:42px;height:42px;border-radius:12px;background:var(--green);color:white;display:grid;place-items:center;font-size:23px;font-weight:800}
+h1{font-size:clamp(1.5rem,4vw,2rem);margin:0;color:var(--green);letter-spacing:-.03em}
+.subtitle{margin:2px 0 0;color:var(--muted);font-size:.9rem}
+.panel{background:white;border:1px solid #e0e7e2;border-radius:18px;padding:clamp(14px,3vw,24px);box-shadow:0 8px 24px #163b2b0b}
+.topbar{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin-bottom:18px}
+.field{display:grid;gap:5px;min-width:180px;flex:1}
+label,.small-label{font-size:.78rem;font-weight:700;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+select,button{font:inherit}
+select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:white;color:var(--ink)}
+.stats{display:flex;gap:18px;flex-wrap:wrap;margin-left:auto;padding:8px 2px}
+.stat{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.92rem}
+.stat strong{color:var(--green);font-size:1.05rem;margin-left:4px}
+.game{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:24px;align-items:start}
+.board-wrap{width:100%;max-width:540px;margin:auto}
+.board{display:grid;grid-template-columns:repeat(9,1fr);aspect-ratio:1;border:3px solid var(--green);background:white;touch-action:manipulation}
+.cell{border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;background:white;display:grid;place-items:center;min-width:0;padding:0;font-size:clamp(1rem,3.5vw,1.7rem);font-weight:500;color:var(--green);cursor:pointer;position:relative}
+.cell:nth-child(9n){border-right:0}
+.cell:nth-child(n+73){border-bottom:0}
+.cell.box-right{border-right:3px solid var(--green)}
+.cell.box-bottom{border-bottom:3px solid var(--green)}
+.cell.peer{background:var(--peer)}
+.cell.selected{background:var(--selected);box-shadow:inset 0 0 0 2px var(--gold);z-index:1}
+.cell.same-digit{background:#e5efe9}
+.cell.given{font-weight:850;color:#17231e;cursor:default}
+.cell.entry{font-weight:600}
+.cell.hint{color:var(--hint);font-weight:800}
+.cell.conflict{background:var(--redbg)!important;color:var(--red)!important;box-shadow:inset 0 0 0 2px #d94b4b}
+.cell.wrong{outline:3px solid var(--orange);outline-offset:-4px;background:var(--orangebg)!important}
+.cell:focus-visible{outline:3px solid var(--gold);outline-offset:-3px;z-index:2}
+.side{display:grid;gap:16px}
+.progress-row{margin:-2px 0 18px;display:grid;gap:7px}
+.progress-copy{display:flex;justify-content:space-between;gap:12px;font-size:.82rem;color:var(--muted)}
+.progress-copy strong{color:var(--green);font-variant-numeric:tabular-nums}
+.progress-track{height:8px;background:#e8eee9;border-radius:99px;overflow:hidden}
+.progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--green),#4b8b70);border-radius:99px;transition:width .2s ease}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button.action.active{background:#f4ecdc;border-color:var(--gold);color:#6d4d19}
+.cell{position:relative}
+.notes-grid{position:absolute;inset:2px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);font-size:clamp(.42rem,1.25vw,.68rem);line-height:1;color:#6b7b72;font-weight:600;pointer-events:none}
+.notes-grid span{display:grid;place-items:center}
+
+button.action{border:1px solid var(--line);background:white;border-radius:10px;padding:10px 12px;font-weight:700;color:var(--green);cursor:pointer}
+button.action.primary{background:var(--green);color:white;border-color:var(--green)}
+button.action:hover:not(:disabled),.pad button:hover{filter:brightness(.96);transform:translateY(-1px)}
+button.action:disabled{opacity:.48;cursor:not-allowed;transform:none}
+button:focus-visible,select:focus-visible{outline:3px solid #b9975b88;outline-offset:2px}
+.pad-wrap{display:grid;gap:9px}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.pad button{border:1px solid #d8e2db;background:#f8faf8;border-radius:10px;min-height:48px;font-size:1.15rem;font-weight:750;color:var(--green);cursor:pointer}
+.pad button.erase{grid-column:span 3;font-size:.95rem;color:#7b3a32;min-height:42px}
+.message{min-height:58px;padding:12px;border-radius:10px;background:var(--soft);color:var(--green);font-size:.92rem;font-weight:650}
+.message.error{background:var(--redbg);color:#9e2525}
+.message.warn{background:var(--orangebg);color:#8b4c00}
+.legend{display:flex;flex-wrap:wrap;gap:12px;color:var(--muted);font-size:.78rem}
+.dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}
+.instructions{margin:20px 0 0;color:var(--muted);font-size:.85rem}
+@media(max-width:680px){main{margin:16px auto 28px}.game{grid-template-columns:1fr;gap:18px}.board-wrap{max-width:520px}.side{grid-template-columns:1fr 1fr;align-items:start}.side .message,.side .legend{grid-column:1/-1}.stats{margin-left:0;width:100%;justify-content:space-between}.cell{font-size:clamp(.95rem,5.2vw,1.55rem)}}
+@media(max-width:390px){.side{grid-template-columns:1fr}.side .message,.side .legend{grid-column:auto}.cell{font-size:1rem}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="brand"><div class="mark" aria-hidden="true">9</div><div><h1>Sudoku Lab</h1><p class="subtitle">A little logic goes a long way.</p></div></div>
+</header>
+<section class="panel">
+  <div class="topbar">
+    <div class="field"><label for="puzzleSelect">Puzzle</label><select id="puzzleSelect">
+      <option value="0">Puzzle 1 · Easy</option><option value="1">Puzzle 2 · Easy</option><option value="2">Puzzle 3 · Medium</option><option value="3">Puzzle 4 · Hard</option>
+    </select></div>
+    <div class="stats"><div class="stat">Time<strong id="timer">00:00</strong></div><div class="stat">Hints<strong id="hintCount">0</strong></div></div>
+  </div>
+  <div class="progress-row" aria-label="Puzzle progress">
+    <div class="progress-copy"><span>Board progress</span><strong id="progressText">0 / 81 filled</strong></div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+  <div class="game">
+    <div class="board-wrap"><div class="board" id="board" role="grid" aria-label="Sudoku board"></div></div>
+    <aside class="side">
+      <div class="actions">
+        <button class="action primary" id="checkBtn">Check</button>
+        <button class="action" id="hintBtn">Hint (3 left)</button>
+        <button class="action" id="pencilBtn" aria-pressed="false">✎ Pencil: Off</button>
+        <button class="action" id="restartBtn">Restart</button>
+      </div>
+      <div class="pad-wrap"><div class="small-label">Number pad</div><div class="pad" id="numberPad">
+        <button data-number="1">1</button><button data-number="2">2</button><button data-number="3">3</button>
+        <button data-number="4">4</button><button data-number="5">5</button><button data-number="6">6</button>
+        <button data-number="7">7</button><button data-number="8">8</button><button data-number="9">9</button>
+        <button class="erase" data-number="0">Erase</button>
+      </div></div>
+      <div class="message" id="message" role="status" aria-live="polite">Select a cell and enter a number to begin.</div>
+      <div class="legend"><span><i class="dot" style="background:#dcebe2"></i>Selected</span><span><i class="dot" style="background:#fde8e7"></i>Rule conflict</span><span><i class="dot" style="background:#fff1dc"></i>Incorrect</span><span><i class="dot" style="background:#dceeff"></i>Hint</span></div>
+    </aside>
+  </div>
+  <p class="instructions">Use your keyboard (1–9, Backspace/Delete/0, and arrow keys) or the number pad. Given clues cannot be changed. Rule conflicts are checked automatically; <b>Check</b> compares entries with the answer key.</p>
+</section>
+</main>
+<script>
+// Puzzle bank: the supplied puzzles and answer keys are kept exactly as provided.
+const puzzles = [
+ {difficulty:"Easy", puzzle:"079060508060091702000050000000406021080903000024015906500007683007502190418039007", solution:"379264518865391742241758369953476821186923475724815936592147683637582194418639257"},
+ {difficulty:"Easy", puzzle:"780400100210038004000500380070390008302000479801007530437000060906020041000004000", solution:"783469125215738694649512387574396218362185479891247536437951862956823741128674953"},
+ {difficulty:"Medium", puzzle:"507300008400279506009500021040020007750000340010000860000004010104000070200090080", solution:"527316498481279536639548721948623157756981342312457869895764213164832975273195684"},
+ {difficulty:"Hard", puzzle:"100000843000038060000000700470006090000100000090000126000540000030600400004389005", solution:"169725843257438961348961752471256398682193574593874126816547239935612487724389615"}
+];
+
+// Game state: entries, selection, hint count, timer, and feedback.
+const boardEl=document.getElementById("board"), selectEl=document.getElementById("puzzleSelect");
+const timerEl=document.getElementById("timer"), hintEl=document.getElementById("hintCount"), messageEl=document.getElementById("message");
+const MAX_HINTS=3;
+let puzzleIndex=0, givens=[], entries=[], hints=new Set(), notes=Array.from({length:81},()=>new Set()), pencilMode=false, selected=-1, hintCount=0, seconds=0, timerId=null, wrongCells=new Set(), solved=false;
+
+function startTimer(){clearInterval(timerId);seconds=0;updateTimer();timerId=setInterval(()=>{if(!solved){seconds++;updateTimer();}},1000);}
+function updateTimer(){timerEl.textContent=String(Math.floor(seconds/60)).padStart(2,"0")+":"+String(seconds%60).padStart(2,"0");}
+function say(text,type=""){messageEl.textContent=text;messageEl.className="message"+(type?" "+type:"");}
+function updateHintButton(){const btn=document.getElementById("hintBtn");const left=MAX_HINTS-hintCount;btn.textContent=`Hint (${left} left)`;btn.disabled=left<=0||solved;btn.title=left<=0?"You have used all 3 hints.":"";}
+function updateProgress(){const filled=entries.filter(Boolean).length;document.getElementById("progressText").textContent=`${filled} / 81 filled`;document.getElementById("progressFill").style.width=`${filled/81*100}%`;}
+function updatePencilButton(){const btn=document.getElementById("pencilBtn");btn.textContent=pencilMode?"✎ Pencil: On":"✎ Pencil: Off";btn.classList.toggle("active",pencilMode);btn.setAttribute("aria-pressed",String(pencilMode));}
+function loadPuzzle(index){
+ puzzleIndex=index;const p=puzzles[index];givens=Array.from(p.puzzle,Number);entries=givens.slice();hints=new Set();notes=Array.from({length:81},()=>new Set());pencilMode=false;hintCount=0;selected=-1;wrongCells.clear();solved=false;
+ hintEl.textContent="0";updateHintButton();updatePencilButton();updateProgress();startTimer();say("Select a cell and enter a number to begin.");render();
+}
+function peers(a,b){const ar=Math.floor(a/9),ac=a%9,br=Math.floor(b/9),bc=b%9;return ar===br||ac===bc||(Math.floor(ar/3)===Math.floor(br/3)&&Math.floor(ac/3)===Math.floor(bc/3));}
+
+// Rule validation: identify every filled cell that duplicates a digit in its row, column, or box.
+function getConflicts(){
+ const bad=new Set();
+ for(let i=0;i<81;i++){if(!entries[i])continue;for(let j=i+1;j<81;j++){if(entries[i]===entries[j]&&peers(i,j)){bad.add(i);bad.add(j);}}}
+ return bad;
+}
+
+// Board rendering: draw clues, player entries, highlights, and the live rule-check state.
+function render(){
+ const conflicts=getConflicts();boardEl.innerHTML="";
+ for(let i=0;i<81;i++){
+  const r=Math.floor(i/9),c=i%9,btn=document.createElement("button"),v=entries[i];
+  btn.type="button";btn.className="cell";btn.setAttribute("role","gridcell");btn.setAttribute("aria-label",`Row ${r+1}, column ${c+1}${v?", "+v:" empty"}${givens[i]?" given":""}`);
+  if(c===2||c===5)btn.classList.add("box-right");if(r===2||r===5)btn.classList.add("box-bottom");
+  if(selected>=0&&peers(i,selected))btn.classList.add("peer");
+  if(i===selected)btn.classList.add("selected");
+  if(v&&selected>=0&&v===entries[selected])btn.classList.add("same-digit");
+  if(givens[i])btn.classList.add("given");else if(v)btn.classList.add("entry");
+  if(hints.has(i))btn.classList.add("hint");if(conflicts.has(i))btn.classList.add("conflict");if(wrongCells.has(i))btn.classList.add("wrong");
+  if(v){btn.textContent=v;}else if(notes[i].size){const noteGrid=document.createElement("span");noteGrid.className="notes-grid";for(let n=1;n<=9;n++){const item=document.createElement("span");item.textContent=notes[i].has(n)?n:"";noteGrid.appendChild(item);}btn.appendChild(noteGrid);}
+  btn.tabIndex=i===selected||selected<0&&i===0?0:-1;btn.addEventListener("click",()=>{selected=i;render();});
+  boardEl.appendChild(btn);
+ }
+}
+
+// Entry handling: only editable cells accept digits; completing the exact board stops the timer.
+function enterDigit(digit){
+ if(selected<0){say("Choose a cell first.","warn");return;}
+ if(givens[selected]){say("That clue is fixed. Choose an empty or editable cell.","warn");return;}
+ if(solved)return;
+ if(pencilMode&&digit!==0){
+  if(entries[selected]){say("Erase the cell before adding pencil notes.","warn");return;}
+  if(notes[selected].has(digit))notes[selected].delete(digit);else notes[selected].add(digit);
+  wrongCells.clear();render();say(`Pencil note ${digit} ${notes[selected].has(digit)?"added":"removed"}.`);return;
+ }
+ if(digit!==0)notes[selected].clear();
+ entries[selected]=digit;hints.delete(selected);wrongCells.clear();updateProgress();render();
+ if(isSolved()){solved=true;clearInterval(timerId);updateHintButton();say(`Solved! Time ${timerEl.textContent}, hints used: ${hintCount}`);}
+ else if(getConflicts().size)say("Duplicate digits are highlighted in red.","error");
+ else say(digit?"Entry added.":"Cell erased.");
+}
+function isSolved(){return entries.every((v,i)=>v===Number(puzzles[puzzleIndex].solution[i]));}
+
+// Answer-key check: separate from rule conflicts; inspect all filled entries and briefly mark incorrect ones.
+function checkAnswers(){
+ wrongCells.clear();for(let i=0;i<81;i++){if(entries[i]&&entries[i]!==Number(puzzles[puzzleIndex].solution[i]))wrongCells.add(i);}
+ render();if(!wrongCells.size)say("All filled cells are correct.");else say(`${wrongCells.size} ${wrongCells.size===1?"cell is":"cells are"} wrong. Incorrect entries are outlined in orange.`,"warn");
+}
+
+// Hint action: fill selected empty cell, or a random empty cell when no suitable selection exists.
+function giveHint(){
+ if(solved)return;if(hintCount>=MAX_HINTS){say("You have used all 3 hints. No more hints are available for this puzzle.","warn");updateHintButton();return;}let target=selected;
+ if(target<0||entries[target]!==0||givens[target]){const empty=[];for(let i=0;i<81;i++)if(!entries[i]&&!givens[i])empty.push(i);if(!empty.length){say("There are no empty cells to hint.","warn");return;}target=empty[Math.floor(Math.random()*empty.length)];}
+ selected=target;entries[target]=Number(puzzles[puzzleIndex].solution[target]);notes[target].clear();hints.add(target);hintCount++;hintEl.textContent=hintCount;updateHintButton();updateProgress();wrongCells.clear();render();
+ if(isSolved()){solved=true;clearInterval(timerId);updateHintButton();say(`Solved! Time ${timerEl.textContent}, hints used: ${hintCount}`);}else say(`Hint added at row ${Math.floor(target/9)+1}, column ${target%9+1}.`);
+}
+
+// Keyboard navigation: arrows move one cell; digits enter; Backspace, Delete, or 0 erase.
+document.addEventListener("keydown",e=>{
+ if(e.target===selectEl)return;
+ if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)){
+  e.preventDefault();if(selected<0)selected=0;else{const r=Math.floor(selected/9),c=selected%9;
+   if(e.key==="ArrowUp")selected=Math.max(0,r-1)*9+c;if(e.key==="ArrowDown")selected=Math.min(8,r+1)*9+c;
+   if(e.key==="ArrowLeft")selected=r*9+Math.max(0,c-1);if(e.key==="ArrowRight")selected=r*9+Math.min(8,c+1);}
+  render();return;
+ }
+ if(/^[1-9]$/.test(e.key)){e.preventDefault();enterDigit(Number(e.key));}
+ else if(e.key==="Backspace"||e.key==="Delete"||e.key==="0"){e.preventDefault();enterDigit(0);}
+});
+document.getElementById("numberPad").addEventListener("click",e=>{const b=e.target.closest("button[data-number]");if(b)enterDigit(Number(b.dataset.number));});
+selectEl.addEventListener("change",()=>loadPuzzle(Number(selectEl.value)));
+document.getElementById("checkBtn").addEventListener("click",checkAnswers);
+document.getElementById("hintBtn").addEventListener("click",giveHint);
+document.getElementById("pencilBtn").addEventListener("click",()=>{if(solved)return;pencilMode=!pencilMode;updatePencilButton();say(pencilMode?"Pencil mode on: choose a cell, then tap or type 1–9 to add/remove notes.":"Pencil mode off: numbers fill cells.");});
+document.getElementById("restartBtn").addEventListener("click",()=>loadPuzzle(puzzleIndex));
+loadPuzzle(0);
+</script>
+</body>
+</html>
